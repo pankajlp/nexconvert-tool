@@ -4,8 +4,8 @@ import uuid
 import time
 import threading
 import webbrowser
-import pythoncom
-import win32com.client
+import platform
+import subprocess
 from flask import Flask, render_template, request, jsonify, send_file
 from pdf2docx import Converter
 
@@ -24,7 +24,6 @@ app.config['CONVERTED_FOLDER'] = CONVERTED_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB upload limit
 
 # Store metadata of converted files for the download endpoint
-# Structure: { file_id: { "filename": "example.docx", "path": "/path/to/example.docx" } }
 conversion_registry = {}
 
 def clean_old_files():
@@ -36,7 +35,6 @@ def clean_old_files():
                 for filename in os.listdir(folder):
                     file_path = os.path.join(folder, filename)
                     if os.path.isfile(file_path):
-                        # If file is older than 30 minutes, delete it
                         if current_time - os.path.getmtime(file_path) > 1800:
                             os.remove(file_path)
         except Exception as e:
@@ -54,29 +52,62 @@ def convert_pdf_to_docx_task(pdf_path, docx_path):
     cv.close()
 
 def convert_docx_to_pdf_task(docx_path, pdf_path):
-    """Convert DOCX to PDF using win32com client and Microsoft Word."""
-    # CoInitialize must be called when using COM in multi-threaded environments (like Flask request threads)
-    pythoncom.CoInitialize()
-    word = None
-    try:
-        # Launch Microsoft Word in a headless/background state
-        word = win32com.client.DispatchEx("Word.Application")
-        word.Visible = False
-        word.DisplayAlerts = False
+    """Convert DOCX to PDF. Uses MS Word COM on Windows, and falls back to LibreOffice headless on Linux."""
+    if platform.system() == 'Windows':
+        # Lazy load Windows-only COM libraries
+        import pythoncom
+        import win32com.client
         
-        # Word requires absolute paths
+        pythoncom.CoInitialize()
+        word = None
+        try:
+            # Launch Microsoft Word in a headless/background state
+            word = win32com.client.DispatchEx("Word.Application")
+            word.Visible = False
+            word.DisplayAlerts = False
+            
+            abs_docx = os.path.abspath(docx_path)
+            abs_pdf = os.path.abspath(pdf_path)
+            
+            # Open and Export
+            doc = word.Documents.Open(abs_docx)
+            # wdFormatPDF = 17
+            doc.SaveAs(abs_pdf, FileFormat=17)
+            doc.Close()
+        finally:
+            if word:
+                word.Quit()
+            pythoncom.CoUninitialize()
+    else:
+        # Cross-platform Fallback (Linux/Docker): Run headless LibreOffice CLI
         abs_docx = os.path.abspath(docx_path)
-        abs_pdf = os.path.abspath(pdf_path)
+        abs_pdf_dir = os.path.dirname(os.path.abspath(pdf_path))
         
-        # Open and Export
-        doc = word.Documents.Open(abs_docx)
-        # wdFormatPDF = 17
-        doc.SaveAs(abs_pdf, FileFormat=17)
-        doc.Close()
-    finally:
-        if word:
-            word.Quit()
-        pythoncom.CoUninitialize()
+        cmd = [
+            'libreoffice',
+            '--headless',
+            '--convert-to',
+            'pdf',
+            abs_docx,
+            '--outdir',
+            abs_pdf_dir
+        ]
+        
+        # Execute conversion command
+        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        if result.returncode != 0:
+            raise Exception(f"LibreOffice conversion failed: {result.stderr or result.stdout}")
+            
+        # LibreOffice outputs file in format [uuid].pdf, but because docx filename is [uuid].docx,
+        # it is already created perfectly under the name [uuid].pdf! Let's double check if it exists.
+        if not os.path.exists(pdf_path):
+            # If for some reason it outputs a file named after the input's original docx name, rename it
+            original_name = os.path.splitext(os.path.basename(docx_path))[0]
+            generated_pdf = os.path.join(abs_pdf_dir, f"{original_name}.pdf")
+            if os.path.exists(generated_pdf):
+                os.rename(generated_pdf, pdf_path)
+            else:
+                raise Exception("Converted PDF file could not be located on disk")
 
 @app.route('/')
 def index():
@@ -88,7 +119,7 @@ def convert():
         return jsonify({"error": "No file part in the request"}), 400
     
     file = request.files['file']
-    direction = request.form.get('direction', '')  # 'pdf2docx' or 'docx2pdf'
+    direction = request.form.get('direction', '')
     
     if file.filename == '':
         return jsonify({"error": "No file selected"}), 400
@@ -99,19 +130,16 @@ def convert():
     filename = file.filename
     name, ext = os.path.splitext(filename)
     
-    # Perform input validation on file extensions
     if direction == 'pdf2docx' and ext.lower() != '.pdf':
         return jsonify({"error": "Please upload a valid PDF file for PDF to DOCX conversion"}), 400
     elif direction == 'docx2pdf' and ext.lower() not in ['.docx', '.doc']:
         return jsonify({"error": "Please upload a valid Word document (.docx/.doc) for DOCX to PDF conversion"}), 400
     
-    # Save input file with unique identifier
     unique_id = str(uuid.uuid4())
     input_filename = f"{unique_id}{ext}"
     input_path = os.path.join(app.config['UPLOAD_FOLDER'], input_filename)
     file.save(input_path)
     
-    # Setup output paths
     output_ext = '.docx' if direction == 'pdf2docx' else '.pdf'
     output_filename = f"{name}{output_ext}"
     safe_output_filename = f"{unique_id}{output_ext}"
@@ -123,7 +151,6 @@ def convert():
         else:
             convert_docx_to_pdf_task(input_path, output_path)
             
-        # Register the successful conversion
         conversion_registry[unique_id] = {
             "filename": output_filename,
             "path": output_path
@@ -164,8 +191,9 @@ def open_browser():
     webbrowser.open("http://127.0.0.1:5000")
 
 if __name__ == '__main__':
-    # Start browser opener daemon thread
-    threading.Thread(target=open_browser, daemon=True).start()
+    # Start browser opener only if running locally on Windows/macOS and not in container production
+    if platform.system() == 'Windows' and os.environ.get('WERKZEUG_RUN_MAIN') != 'true':
+        threading.Thread(target=open_browser, daemon=True).start()
     
-    # Run the local Flask server
+    # Run server (Gunicorn will bind and execute this dynamically in Docker)
     app.run(host='127.0.0.1', port=5000, debug=False)

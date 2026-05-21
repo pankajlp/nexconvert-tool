@@ -1,0 +1,4 @@
+Flask==3.0.3
+gunicorn==22.0.0
+pdf2docx==0.5.8
+pywin32==306; platform_system == "Windows"
