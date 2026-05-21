@@ -1,0 +1,24 @@
+# Compiled python files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Local uploads and converted outputs
+uploads/*
+!uploads/.gitkeep
+converted/*
+!converted/.gitkeep
+
+# Environments
+.venv/
+venv/
+ENV/
+env/
+
+# IDE files
+.idea/
+.vscode/
+
+# Local logs
+*.log

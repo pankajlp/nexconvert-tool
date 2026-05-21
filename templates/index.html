@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NexConvert - Premium PDF & DOCX Converter</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="background-decorations">
+        <div class="glow-orb orb-primary"></div>
+        <div class="glow-orb orb-secondary"></div>
+    </div>
+
+    <div class="app-container">
+        <!-- Premium Navigation Header -->
+        <header class="app-header">
+            <div class="brand">
+                <div class="brand-logo">
+                    <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                        <polyline points="2 17 12 22 22 17"></polyline>
+                        <polyline points="2 12 12 17 22 12"></polyline>
+                    </svg>
+                </div>
+                <h1>Nex<span>Convert</span></h1>
+            </div>
+            <div class="security-badge">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+                <span>100% Local & Secure</span>
+            </div>
+        </header>
+
+        <!-- Main Interactive Board -->
+        <main class="converter-board">
+            
+            <!-- Mode Selector Switches -->
+            <section class="mode-selector-section">
+                <div class="mode-toggles">
+                    <button id="toggle-pdf2docx" class="mode-btn active" data-mode="pdf2docx">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="btn-icon">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                        </svg>
+                        <span>PDF to DOCX</span>
+                    </button>
+                    <button id="toggle-docx2pdf" class="mode-btn" data-mode="docx2pdf">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="btn-icon">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <path d="M12 18v-6"></path>
+                            <path d="M8 15h8"></path>
+                        </svg>
+                        <span>DOCX to PDF</span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- Drop Zone Container -->
+            <section class="drop-zone-section">
+                <div id="drop-zone" class="drop-zone glass-card">
+                    <input type="file" id="file-selector" multiple class="file-input-hidden">
+                    <div class="drop-zone-content">
+                        <div class="upload-icon-container">
+                            <!-- Floating Upload Icon -->
+                            <svg viewBox="0 0 24 24" width="56" height="56" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="upload-arrow">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="17 8 12 3 7 8"></polyline>
+                                <line x1="12" y1="3" x2="12" y2="15"></line>
+                            </svg>
+                        </div>
+                        <div class="instructions">
+                            <h3>Drag & drop your files here</h3>
+                            <p>or <span class="browse-link">browse local files</span></p>
+                            <span class="file-type-hint" id="format-hint">Supports PDF documents up to 50MB</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Processing Queue Board -->
+            <section id="queue-section" class="queue-section hidden">
+                <div class="glass-card panel-card">
+                    <div class="panel-header">
+                        <h2>Conversion Queue</h2>
+                        <span class="badge" id="queue-count">0 Files</span>
+                    </div>
+                    <div class="queue-list" id="queue-list-container">
+                        <!-- Queue cards rendered dynamically via JS -->
+                    </div>
+                    <div class="panel-footer">
+                        <button id="clear-completed-btn" class="secondary-action-btn hidden">Clear Completed</button>
+                        <button id="convert-all-btn" class="primary-action-btn">
+                            <span>Convert Queue</span>
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Session History Board -->
+            <section id="history-section" class="history-section hidden">
+                <div class="glass-card panel-card">
+                    <div class="panel-header">
+                        <h2>Session History</h2>
+                        <span class="badge badge-success" id="history-count">0 Converted</span>
+                    </div>
+                    <div class="history-list" id="history-list-container">
+                        <!-- History items rendered dynamically via JS -->
+                    </div>
+                </div>
+            </section>
+
+        </main>
+
+        <footer class="app-footer">
+            <p>NexConvert Web Tool &bull; Powered by PyMuPDF, python-docx, and Microsoft Word API</p>
+        </footer>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="toast hidden">
+        <div class="toast-content">
+            <span class="toast-message">Message text goes here</span>
+        </div>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>
