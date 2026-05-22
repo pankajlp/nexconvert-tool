@@ -8,9 +8,12 @@ import platform
 import subprocess
 from flask import Flask, render_template, request, jsonify, send_file
 from pdf2docx import Converter
+from flask import send_from_directory
 
 app = Flask(__name__)
-
+@app.route('/ads.txt')
+def ads():
+    return send_from_directory('.', 'ads.txt')
 # Configure upload and converted directories inside the project folder
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
