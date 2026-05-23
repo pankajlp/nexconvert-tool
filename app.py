@@ -49,14 +49,36 @@ cleanup_thread = threading.Thread(target=clean_old_files, daemon=True)
 cleanup_thread.start()
 
 def convert_pdf_to_docx_task(pdf_path, docx_path):
-    """Convert PDF to DOCX using pdf2docx library."""
+    """Convert PDF to DOCX using safer settings."""
+
     cv = Converter(pdf_path)
-    cv.convert(docx_path,start=0,
-    end=None,
-    multi_processing=False,
-    table_processing=False,
-    extract_image=False)
-    cv.close()
+
+    try:
+        cv.convert(
+            docx_path,
+            start=0,
+            end=None,
+            multi_processing=False
+        )
+
+    except Exception as e:
+        print(f"Primary conversion failed: {e}")
+
+        # Retry with fewer features
+        try:
+            cv.convert(
+                docx_path,
+                start=0,
+                end=10,
+                multi_processing=False
+            )
+
+        except Exception as retry_error:
+            print(f"Retry conversion failed: {retry_error}")
+            raise retry_error
+
+    finally:
+        cv.close()
 
 def convert_docx_to_pdf_task(docx_path, pdf_path):
     """Convert DOCX to PDF. Uses MS Word COM on Windows, and falls back to LibreOffice headless on Linux."""
