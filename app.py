@@ -10,6 +10,18 @@ from flask import Flask, render_template, request, jsonify, send_file
 from pdf2docx import Converter
 from flask import send_from_directory
 
+# Monkeypatch PyMuPDF to disable intermediate stream compression during conversion.
+# This prevents CPU-intensive JM_compress_buffer blocks, resolving Gunicorn timeouts.
+try:
+    import fitz
+    _orig_update_stream = fitz.Document.update_stream
+    def _patched_update_stream(self, xref, stream, *args, **kwargs):
+        kwargs['compress'] = False
+        return _orig_update_stream(self, xref, stream, *args, **kwargs)
+    fitz.Document.update_stream = _patched_update_stream
+except Exception as e:
+    print(f"Failed to apply PyMuPDF monkeypatch: {e}", file=sys.stderr)
+
 app = Flask(__name__)
 @app.route('/ads.txt')
 def ads():
