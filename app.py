@@ -54,7 +54,8 @@ def convert_pdf_to_docx_task(pdf_path, docx_path):
     cv.convert(docx_path,start=0,
     end=None,
     multi_processing=False,
-    table_processing=False)
+    table_processing=False,
+    extract_image=False)
     cv.close()
 
 def convert_docx_to_pdf_task(docx_path, pdf_path):
