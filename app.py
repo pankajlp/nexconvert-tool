@@ -51,7 +51,10 @@ cleanup_thread.start()
 def convert_pdf_to_docx_task(pdf_path, docx_path):
     """Convert PDF to DOCX using pdf2docx library."""
     cv = Converter(pdf_path)
-    cv.convert(docx_path)
+    cv.convert(docx_path,start=0,
+    end=None,
+    multi_processing=False,
+    table_processing=False)
     cv.close()
 
 def convert_docx_to_pdf_task(docx_path, pdf_path):
